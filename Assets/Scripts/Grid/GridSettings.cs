@@ -1,3 +1,4 @@
+
 using UnityEngine;
 
 public class GridSettings : MonoBehaviour
@@ -30,6 +31,15 @@ public class GridSettings : MonoBehaviour
         }
     }
 
+    public void ConfigureGrid(int newWidth, int newHeight)
+    {
+        width = Mathf.Max(1, newWidth);
+        height = Mathf.Max(1, newHeight);
+
+        goalPositionInitialized = false;
+        InitializeGoalPosition();
+    }
+
     void InitializeGoalPosition()
     {
         int minX = width > 2 ? 1 : 0;
@@ -43,7 +53,8 @@ public class GridSettings : MonoBehaviour
             Random.Range(minY, maxYExclusive)
         );
 
-        if (goalPosition == StartPosition && width > 1 && height > 1)
+        if (goalPosition == StartPosition &&
+            width > 1 && height > 1)
         {
             goalPosition = new Vector2Int(
                 Mathf.Min(1, width - 1),

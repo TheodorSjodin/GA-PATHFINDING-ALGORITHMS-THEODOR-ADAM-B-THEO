@@ -8,11 +8,23 @@ public class ObstacleManager : MonoBehaviour
     [Range(0f, 1f)]
     public float obstaclePercentage = 0.25f;
 
-    public bool allow1x1 = true;
-    public bool allow1x2 = true;
-    public bool allow1x3 = true;
-    public bool allow1x4 = true;
-    public bool allow2x2 = true;
+    public float ObstaclePercentage => obstaclePercentage;
+
+    [Header("Visualization")]
+    public bool renderObstacles = true;
+
+    [Header("Large Obstacle Sizes")]
+    [Range(1, 10)]
+    public int minObstacleWidth = 2;
+
+    [Range(1, 10)]
+    public int maxObstacleWidth = 5;
+
+    [Range(1, 10)]
+    public int minObstacleHeight = 2;
+
+    [Range(1, 10)]
+    public int maxObstacleHeight = 5;
 
     public bool allowRotation = true;
 
@@ -39,6 +51,30 @@ public class ObstacleManager : MonoBehaviour
             return;
         }
 
+        RegenerateEnvironment();
+    }
+
+    public void RegenerateEnvironment()
+    {
+        if (settings == null)
+        {
+            settings = GetComponent<GridSettings>();
+        }
+
+        if (settings == null)
+        {
+            Debug.LogError("GridSettings component not found!");
+            return;
+        }
+
+        // Remove the previous obstacle mesh, if present.
+        Transform oldMesh = transform.Find("ObstacleMesh");
+
+        if (oldMesh != null)
+        {
+            Destroy(oldMesh.gameObject);
+        }
+
         int totalCells = settings.width * settings.height;
 
         blockedCells = new bool[totalCells];
@@ -46,7 +82,11 @@ public class ObstacleManager : MonoBehaviour
 
         GenerateGuaranteedPath();
         GenerateObstacles();
-        CreateObstacleMesh();
+
+        if (renderObstacles)
+        {
+            CreateObstacleMesh();
+        }
     }
 
     void GenerateGuaranteedPath()
@@ -123,256 +163,130 @@ public class ObstacleManager : MonoBehaviour
 
     void GenerateObstacles()
     {
-        int totalCells =
-            settings.width * settings.height;
+        int width = settings.width;
+        int height = settings.height;
+        int totalCells = width * height;
 
-        int targetObstacleCells =
-            Mathf.RoundToInt(
-                totalCells *
-                obstaclePercentage
-            );
-
-        List<int> candidates = new List<int>();
-
-        for (int i = 0; i < totalCells; i++)
-        {
-            if (!guaranteedPath[i])
-                candidates.Add(i);
-        }
-
-        for (int i = candidates.Count - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            int temporary = candidates[i];
-            candidates[i] = candidates[j];
-            candidates[j] = temporary;
-        }
+        int targetObstacleCells = Mathf.RoundToInt(
+            totalCells * obstaclePercentage
+        );
 
         int obstacleCount = 0;
+        int maxAttempts = Mathf.Max(1000, totalCells / 2);
         int attempts = 0;
 
         while (obstacleCount < targetObstacleCells &&
-               attempts < candidates.Count * 2)
+               attempts < maxAttempts)
         {
             attempts++;
 
-            Vector2Int[] shape =
-                GetRandomShape();
-
-            if (shape == null)
-                continue;
-
-            if (allowRotation &&
-                Random.value > 0.5f)
-            {
-                shape = RotateShape(shape);
-            }
-
-            int remainingCells =
-                targetObstacleCells -
-                obstacleCount;
-
-            if (shape.Length > remainingCells)
-                continue;
-
-            int candidateIndex = Random.Range(0, candidates.Count);
-            int index = candidates[candidateIndex];
-
-            Vector2Int position = new Vector2Int(
-                index % settings.width,
-                index / settings.width
+            int obstacleWidth = Random.Range(
+                Mathf.Max(1, minObstacleWidth),
+                Mathf.Max(
+                    Mathf.Max(1, minObstacleWidth),
+                    maxObstacleWidth
+                ) + 1
             );
 
-            if (!CanPlaceShape(
-                shape,
-                position))
+            int obstacleHeight = Random.Range(
+                Mathf.Max(1, minObstacleHeight),
+                Mathf.Max(
+                    Mathf.Max(1, minObstacleHeight),
+                    maxObstacleHeight
+                ) + 1
+            );
+
+            if (allowRotation && Random.value < 0.5f)
+            {
+                int temp = obstacleWidth;
+                obstacleWidth = obstacleHeight;
+                obstacleHeight = temp;
+            }
+
+            if (obstacleWidth > width ||
+                obstacleHeight > height)
             {
                 continue;
             }
 
-            foreach (Vector2Int cell in shape)
+            int x = Random.Range(0, width - obstacleWidth + 1);
+            int y = Random.Range(0, height - obstacleHeight + 1);
+
+            int remainingCells = targetObstacleCells - obstacleCount;
+            int shapeCells = obstacleWidth * obstacleHeight;
+
+            if (shapeCells > remainingCells)
+                continue;
+
+            if (!CanPlaceRectangle(x, y, obstacleWidth, obstacleHeight))
+                continue;
+
+            for (int dy = 0; dy < obstacleHeight; dy++)
             {
-                blockedCells[GetIndex(position + cell)] = true;
+                for (int dx = 0; dx < obstacleWidth; dx++)
+                {
+                    int index = (y + dy) * width + (x + dx);
+                    blockedCells[index] = true;
+                }
+            }
+
+            obstacleCount += shapeCells;
+        }
+
+        // Fill any remaining target cells with individual cells.
+        // This helps approach the requested percentage if large
+        // rectangles cannot fill the target exactly.
+        if (obstacleCount < targetObstacleCells)
+        {
+            for (int i = 0;
+                 i < totalCells && obstacleCount < targetObstacleCells;
+                 i++)
+            {
+                if (blockedCells[i] || guaranteedPath[i])
+                    continue;
+
+                blockedCells[i] = true;
                 obstacleCount++;
             }
         }
 
-        for (int i = 0; i < candidates.Count &&
-                        obstacleCount < targetObstacleCells; i++)
-        {
-            if (blockedCells[candidates[i]])
-                continue;
-
-            blockedCells[candidates[i]] = true;
-            obstacleCount++;
-        }
-
         float actualPercentage =
-            (float)obstacleCount /
-            totalCells *
-            100f;
+            (float)obstacleCount / totalCells * 100f;
 
         Debug.Log(
-            "Generated " +
-            obstacleCount +
-            " obstacle cells out of " +
-            totalCells +
-            " (" +
-            actualPercentage.ToString("F1") +
-            "%)."
+            "Generated " + obstacleCount +
+            " obstacle cells out of " + totalCells +
+            " (" + actualPercentage.ToString("F2") + "%)."
         );
     }
 
-    bool CanPlaceShape(
-        Vector2Int[] shape,
-        Vector2Int position)
+    bool CanPlaceRectangle(
+        int x,
+        int y,
+        int rectangleWidth,
+        int rectangleHeight)
     {
-        foreach (Vector2Int cell in shape)
+        for (int dy = 0; dy < rectangleHeight; dy++)
         {
-            Vector2Int gridPosition =
-                position + cell;
+            for (int dx = 0; dx < rectangleWidth; dx++)
+            {
+                int gridX = x + dx;
+                int gridY = y + dy;
 
-            if (!IsInsideGrid(gridPosition))
-                return false;
+                if (gridX < 0 || gridX >= settings.width ||
+                    gridY < 0 || gridY >= settings.height)
+                {
+                    return false;
+                }
 
-            if (gridPosition ==
-                settings.StartPosition)
-                return false;
+                int index = gridY * settings.width + gridX;
 
-            if (gridPosition ==
-                settings.GoalPosition)
-                return false;
-
-            int index = GetIndex(gridPosition);
-
-            if (guaranteedPath[index])
-                return false;
-
-            if (blockedCells[index])
-                return false;
+                if (blockedCells[index] || guaranteedPath[index])
+                    return false;
+            }
         }
 
         return true;
-    }
-
-    Vector2Int[] GetRandomShape()
-    {
-        List<Vector2Int[]> shapes =
-            new List<Vector2Int[]>();
-
-        if (allow1x1)
-        {
-            shapes.Add(
-                new Vector2Int[]
-                {
-                    new Vector2Int(0, 0)
-                }
-            );
-        }
-
-        if (allow1x2)
-        {
-            shapes.Add(
-                new Vector2Int[]
-                {
-                    new Vector2Int(0, 0),
-                    new Vector2Int(0, 1)
-                }
-            );
-        }
-
-        if (allow1x3)
-        {
-            shapes.Add(
-                new Vector2Int[]
-                {
-                    new Vector2Int(0, 0),
-                    new Vector2Int(0, 1),
-                    new Vector2Int(0, 2)
-                }
-            );
-        }
-
-        if (allow1x4)
-        {
-            shapes.Add(
-                new Vector2Int[]
-                {
-                    new Vector2Int(0, 0),
-                    new Vector2Int(0, 1),
-                    new Vector2Int(0, 2),
-                    new Vector2Int(0, 3)
-                }
-            );
-        }
-
-        if (allow2x2)
-        {
-            shapes.Add(
-                new Vector2Int[]
-                {
-                    new Vector2Int(0, 0),
-                    new Vector2Int(1, 0),
-                    new Vector2Int(0, 1),
-                    new Vector2Int(1, 1)
-                }
-            );
-        }
-
-        if (shapes.Count == 0)
-            return null;
-
-        return shapes[
-            Random.Range(
-                0,
-                shapes.Count
-            )
-        ];
-    }
-
-    Vector2Int[] RotateShape(
-        Vector2Int[] shape)
-    {
-        Vector2Int[] rotated =
-            new Vector2Int[
-                shape.Length
-            ];
-
-        for (int i = 0;
-             i < shape.Length;
-             i++)
-        {
-            rotated[i] =
-                new Vector2Int(
-                    -shape[i].y,
-                    shape[i].x
-                );
-        }
-
-        int minX = int.MaxValue;
-        int minY = int.MaxValue;
-
-        foreach (Vector2Int cell in rotated)
-        {
-            if (cell.x < minX)
-                minX = cell.x;
-
-            if (cell.y < minY)
-                minY = cell.y;
-        }
-
-        for (int i = 0;
-             i < rotated.Length;
-             i++)
-        {
-            rotated[i] -=
-                new Vector2Int(
-                    minX,
-                    minY
-                );
-        }
-
-        return rotated;
     }
 
     // --------------------------------------------------

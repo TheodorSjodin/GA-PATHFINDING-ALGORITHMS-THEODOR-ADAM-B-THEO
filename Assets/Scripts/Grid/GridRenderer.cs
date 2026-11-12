@@ -1,13 +1,23 @@
+
 using UnityEngine;
-using UnityEngine.Rendering;
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
 public class GridRenderer : MonoBehaviour
 {
+    [Header("Visualization")]
+    public bool renderTerrain = true;
+
     private GridSettings settings;
+    private Material terrainMaterial;
+    private Mesh terrainMesh;
 
     void Start()
+    {
+        RegenerateTerrain();
+    }
+
+    public void RegenerateTerrain()
     {
         settings = GetComponent<GridSettings>();
 
@@ -17,16 +27,22 @@ public class GridRenderer : MonoBehaviour
             return;
         }
 
+        MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
+
+        if (!renderTerrain)
+        {
+            meshRenderer.enabled = false;
+            return;
+        }
+
+        meshRenderer.enabled = true;
         CreateTerrainMesh();
     }
 
     void CreateTerrainMesh()
     {
-        float minX =
-            -settings.cellSize / 2f;
-
-        float minZ =
-            -settings.cellSize / 2f;
+        float minX = -settings.cellSize / 2f;
+        float minZ = -settings.cellSize / 2f;
 
         float maxX =
             (settings.width - 1) * settings.cellSize
@@ -58,39 +74,55 @@ public class GridRenderer : MonoBehaviour
             new Vector2(1, 1)
         };
 
-        Mesh mesh = new Mesh();
+        Mesh newMesh = new Mesh();
+        newMesh.name = "TerrainMesh";
+        newMesh.vertices = vertices;
+        newMesh.triangles = triangles;
+        newMesh.uv = uv;
+        newMesh.RecalculateNormals();
+        newMesh.RecalculateBounds();
 
-        mesh.name = "TerrainMesh";
+        MeshFilter meshFilter = GetComponent<MeshFilter>();
 
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
-        mesh.uv = uv;
+        if (terrainMesh != null)
+        {
+            Destroy(terrainMesh);
+        }
 
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
+        terrainMesh = newMesh;
+        meshFilter.sharedMesh = terrainMesh;
 
-        MeshFilter meshFilter =
-            GetComponent<MeshFilter>();
-
-        meshFilter.mesh = mesh;
-
-        MeshRenderer meshRenderer =
-            GetComponent<MeshRenderer>();
-
-        Material material =
-            new Material(
-                Shader.Find(
-                    "Universal Render Pipeline/Lit"
-                )
+        if (terrainMaterial == null)
+        {
+            Shader shader = Shader.Find(
+                "Universal Render Pipeline/Lit"
             );
 
-        material.color =
-            new Color(
-                0.35f,
-                0.35f,
-                0.35f
-            );
+            if (shader != null)
+            {
+                terrainMaterial = new Material(shader);
+                terrainMaterial.color =
+                    new Color(0.35f, 0.35f, 0.35f);
+            }
+        }
 
-        meshRenderer.material = material;
+        if (terrainMaterial != null)
+        {
+            GetComponent<MeshRenderer>().sharedMaterial =
+                terrainMaterial;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (terrainMesh != null)
+        {
+            Destroy(terrainMesh);
+        }
+
+        if (terrainMaterial != null)
+        {
+            Destroy(terrainMaterial);
+        }
     }
 }

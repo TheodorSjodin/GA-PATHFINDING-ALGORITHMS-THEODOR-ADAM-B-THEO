@@ -136,6 +136,8 @@ GameObject:
   - component: {fileID: 440182919}
   - component: {fileID: 440182918}
   - component: {fileID: 440182920}
+  - component: {fileID: 440182921}
+  - component: {fileID: 440182922}
   m_Layer: 0
   m_Name: Grid
   m_TagString: Untagged
@@ -170,6 +172,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ce3168f70e9e4464ea7a705f2543c29e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GridRenderer
+  renderTerrain: 0
 --- !u!114 &440182914
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -210,13 +213,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ObstacleManager
   obstaclePercentage: 0.25
-  allow1x1: 1
-  allow1x2: 1
-  allow1x3: 1
-  allow1x4: 1
-  allow2x2: 1
+  renderObstacles: 0
+  minObstacleWidth: 2
+  maxObstacleWidth: 5
+  minObstacleHeight: 2
+  maxObstacleHeight: 5
   allowRotation: 1
-  pathRandomness: 0.35
+  minStraightLength: 1
+  maxStraightLength: 6
 --- !u!114 &440182917
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -303,6 +307,45 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BorderRenderer
   wallHeight: 1
   wallThickness: 0.2
+--- !u!114 &440182921
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 440182911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8844c5c4ce756764ca1d8ab8b1a432df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GoogleSheetsBatchSync
+  webAppUrl: https://script.google.com/macros/s/AKfycbwmY5m52erpKuAp3YlXxPFn-RL4Ag_eDfdKMn4mrME8FwMWvnKetu6jqzOEuib1HXxREA/exec
+  sharedSecret: d:Gk_DXj&Ff$@^34
+  batchSize: 200
+  syncIntervalSeconds: 60
+--- !u!114 &440182922
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 440182911}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f12f4b98bea79104abd6cf1f732cfbfa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PathfindingBenchmark
+  gridSizes:
+  - {x: 5000, y: 5000}
+  obstaclePercentages:
+  - 0.2
+  - 0.3
+  - 0.4
+  repetitions: 500
+  gridSettings: {fileID: 0}
+  gridRenderer: {fileID: 0}
+  obstacleManager: {fileID: 0}
+  beanBagPathfinding: {fileID: 0}
 --- !u!1 &583232394
 GameObject:
   m_ObjectHideFlags: 0
@@ -695,6 +738,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BeanBagPathfinding
   moveSpeed: 30
+  animateAlgorithm: 0
+  saveResults: 1
+  runOnStart: 1
 --- !u!114 &1793442452
 MonoBehaviour:
   m_ObjectHideFlags: 0
