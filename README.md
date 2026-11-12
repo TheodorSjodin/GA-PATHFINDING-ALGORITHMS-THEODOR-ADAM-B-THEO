@@ -17,7 +17,6 @@ A Unity-based benchmark comparing five pathfinding algorithms — BFS, DFS, Dijk
   - [Spreadsheet Features](#spreadsheet-features)
   - [Expected Data Format](#expected-data-format)
   - [Important Notes](#important-notes)
-- [Troubleshooting](#troubleshooting)
 - [Project Structure](#project-structure)
 - [Technologies](#technologies)
 - [Project Authors](#project-authors)
@@ -257,23 +256,6 @@ Numbers use a dot as the decimal separator (for example `10.00` and `31.396`). T
 - The Apps Script must be deployed again as a new version whenever its code is updated.
 - The local CSV file remains the source of the results before synchronization.
 - The shared secret is included in the Unity client and should not be treated as a secure password. Do not use it to protect sensitive data or rely on it as the only security measure for a publicly accessible Web App.
-
-## Troubleshooting
-
-**Numbers appear as times, or look wrong, in the spreadsheet.**
-Google Sheets can interpret text such as `10.00` or `22.22` as a clock time when the spreadsheet uses a language such as Swedish. The included `Code.gs` prevents this by writing real numbers. If you see it, check that the web app was deployed as a **new version** (see Step 4) and use **Pathfinding → Diagnose data** to see which cells are not numbers.
-
-**The dashboard shows `#ERROR!`.**
-Some spreadsheet languages require `;` instead of `,` between formula arguments. **Build dashboard** detects this automatically. If you still see the error, the script reports which cell and formula failed.
-
-**Synchronization stops with `Invalid CSV row`.**
-The CSV file has a row that does not have 8 or 11 fields, or it does not end with a line break. Fix the file and check that `PathfindingResults.syncedRows` matches the number of rows already uploaded.
-
-**Rows are missing or duplicated after you edited the CSV.**
-The counter in `PathfindingResults.syncedRows` no longer matches the file. See [Synchronization](#synchronization).
-
-**The `Log` tab contains `Readback mismatch`.**
-The script wrote a value and found a different value when it read it back, so it removed the rows and reported an error. Check the spreadsheet's language and the formatting of the `Results` tab.
 
 ## Project Structure
 
